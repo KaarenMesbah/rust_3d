@@ -5,7 +5,7 @@ use beryllium::{
     video::{CreateWinArgs, GlProfile},
 };
 use glow::*;
-use std::ffi::c_void;
+use std::ffi::{CString, c_void};
 fn main() {
     let sdl = Sdl::init(InitFlags::EVERYTHING);
     // for info in sdl.get_renderer_driver_infos().unwrap() {
@@ -28,7 +28,7 @@ fn main() {
             resizable: false,
         })
         .unwrap();
-    
+
     println!("GL window size: {:?}", win.get_window_size());
     println!("GL drawable size: {:?}", win.get_drawable_size());
     println!(
@@ -36,12 +36,18 @@ fn main() {
         win.supports_extension("GL_KHR_debug")
     );
 
+    // load GL via beryllium's proc address function
+    let gl = unsafe {
+        glow::Context::from_loader_function(|name: &str| {
+            // Convert Rust &str to a nul-terminated C string for SDL's loader.
+            let c_name = CString::new(name).unwrap();
+            // `get_proc_address` expects a raw C pointer; cast as needed and
+            // return a `*const c_void` for glow.
+            let addr = win.get_proc_address(c_name.as_ptr() as *const u8);
+            addr as *const c_void
+        })
+    };
 
-    //load gl
-    unsafe {
-        let gl = glow::Context::from_loader_function(|name| {
-            win.get_proc_address(name) as *const c_void
- });
 
 
     let mut controllers = Vec::new();
